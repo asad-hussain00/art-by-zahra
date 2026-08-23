@@ -113,7 +113,7 @@
 
   <div id="dashboard">
     <div class="panel">
-      <h2>Add Portfolio Item</h2>
+      <h2 id="formTitle">Add Portfolio Item</h2>
       <form id="itemForm">
         <div class="field">
           <label for="title">Title</label>
@@ -141,15 +141,19 @@
           <textarea id="description" rows="2" placeholder="One line about this piece"></textarea>
         </div>
         <div class="field">
-          <label for="imageFile">Photo</label>
-          <input type="file" id="imageFile" accept="image/*" required>
+          <label for="imageFile" id="imageLabel">Photo</label>
+          <input type="file" id="imageFile" accept="image/*">
+          <span class="field-hint" id="imageHint"></span>
           <div class="upload-status" id="uploadStatus"></div>
         </div>
         <div class="checkbox-field">
           <input type="checkbox" id="featured">
           <label for="featured">Show on homepage "Favourites" (pick your best — up to 6 recommended)</label>
         </div>
-        <button type="submit" class="btn" id="saveBtn">Add to Portfolio</button>
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn" id="saveBtn">Add to Portfolio</button>
+          <button type="button" class="btn btn-logout" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+        </div>
         <div class="msg" id="itemMsg"></div>
       </form>
     </div>
@@ -225,8 +229,44 @@
 
   const itemForm = document.getElementById('itemForm');
   const saveBtn = document.getElementById('saveBtn');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const formTitle = document.getElementById('formTitle');
   const itemMsg = document.getElementById('itemMsg');
   const uploadStatus = document.getElementById('uploadStatus');
+  const imageHint = document.getElementById('imageHint');
+
+  let editingId = null;
+  let editingImageUrl = '';
+
+  function enterEditMode(id, item){
+    editingId = id;
+    editingImageUrl = item.imageUrl || '';
+    document.getElementById('title').value = item.title || '';
+    document.getElementById('category').value = item.category || 'canvas';
+    document.getElementById('code').value = item.code || '';
+    document.getElementById('price').value = item.price || '';
+    document.getElementById('description').value = item.description || '';
+    document.getElementById('featured').checked = !!item.featured;
+    document.getElementById('imageFile').value = '';
+    imageHint.textContent = 'Leave blank to keep the current photo, or choose a new one to replace it.';
+    formTitle.textContent = 'Edit Portfolio Item';
+    saveBtn.textContent = 'Update Item';
+    cancelEditBtn.style.display = 'inline-block';
+    itemMsg.classList.remove('show');
+    itemForm.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  function exitEditMode(){
+    editingId = null;
+    editingImageUrl = '';
+    itemForm.reset();
+    imageHint.textContent = '';
+    formTitle.textContent = 'Add Portfolio Item';
+    saveBtn.textContent = 'Add to Portfolio';
+    cancelEditBtn.style.display = 'none';
+  }
+
+  cancelEditBtn.addEventListener('click', exitEditMode);
 
   itemForm.addEventListener('submit', function(e){
     e.preventDefault();
@@ -240,7 +280,7 @@
     const featured = document.getElementById('featured').checked;
     const file = document.getElementById('imageFile').files[0];
 
-    if(!file){
+    if(!editingId && !file){
       showMsg(itemMsg, 'Please choose a photo.', true);
       return;
     }
@@ -250,41 +290,64 @@
     }
 
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Uploading…';
-    uploadStatus.textContent = 'Uploading photo to Cloudinary…';
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    function saveData(imageUrl){
+      const data = { title, category, code, price, description, featured, imageUrl };
+      if(editingId){
+        return db.collection('portfolio').doc(editingId).update(data);
+      }
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      return db.collection('portfolio').add(data);
+    }
 
-    fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-      method: 'POST',
-      body: formData
-    })
-    .then(res=>res.json())
-    .then(data=>{
-      if(!data.secure_url) throw new Error(data.error?.message || 'Upload failed');
-      uploadStatus.textContent = 'Photo uploaded. Saving item…';
-      return db.collection('portfolio').add({
-        title, category, code, price, description, featured,
-        imageUrl: data.secure_url,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    if(file){
+      saveBtn.textContent = 'Uploading…';
+      uploadStatus.textContent = 'Uploading photo to Cloudinary…';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(res=>res.json())
+      .then(data=>{
+        if(!data.secure_url) throw new Error(data.error?.message || 'Upload failed');
+        uploadStatus.textContent = 'Photo uploaded. Saving item…';
+        return saveData(data.secure_url);
+      })
+      .then(()=>{
+        showMsg(itemMsg, editingId ? 'Item updated!' : 'Item added to portfolio!', false);
+        exitEditMode();
+        uploadStatus.textContent = '';
+        loadItems();
+      })
+      .catch(err=>{
+        showMsg(itemMsg, 'Error: ' + err.message, true);
+        uploadStatus.textContent = '';
+      })
+      .finally(()=>{
+        saveBtn.disabled = false;
+        saveBtn.textContent = editingId ? 'Update Item' : 'Add to Portfolio';
       });
-    })
-    .then(()=>{
-      showMsg(itemMsg, 'Item added to portfolio!', false);
-      itemForm.reset();
-      uploadStatus.textContent = '';
-      loadItems();
-    })
-    .catch(err=>{
-      showMsg(itemMsg, 'Error: ' + err.message, true);
-      uploadStatus.textContent = '';
-    })
-    .finally(()=>{
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Add to Portfolio';
-    });
+    } else {
+      saveBtn.textContent = 'Saving…';
+      saveData(editingImageUrl)
+        .then(()=>{
+          showMsg(itemMsg, 'Item updated!', false);
+          exitEditMode();
+          loadItems();
+        })
+        .catch(err=>{
+          showMsg(itemMsg, 'Error: ' + err.message, true);
+        })
+        .finally(()=>{
+          saveBtn.disabled = false;
+          saveBtn.textContent = editingId ? 'Update Item' : 'Add to Portfolio';
+        });
+    }
   });
 
   const itemsList = document.getElementById('itemsList');
@@ -311,12 +374,16 @@
           </div>
           <div class="item-actions">
             <button class="btn btn-star btn-small" data-action="feature" data-id="${doc.id}" data-featured="${!!item.featured}">${item.featured ? '☆ Unfeature' : '★ Feature'}</button>
+            <button class="btn btn-small" data-action="edit" data-id="${doc.id}">✎ Edit</button>
             <button class="btn btn-danger btn-small" data-action="delete" data-id="${doc.id}">Delete</button>
           </div>
         `;
         row.querySelector('[data-action="feature"]').addEventListener('click', (e)=>{
           const currentlyFeatured = e.target.dataset.featured === 'true';
           db.collection('portfolio').doc(doc.id).update({featured: !currentlyFeatured}).then(loadItems);
+        });
+        row.querySelector('[data-action="edit"]').addEventListener('click', ()=>{
+          enterEditMode(doc.id, item);
         });
         row.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
           if(confirm('Delete this item?')){
