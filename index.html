@@ -106,7 +106,7 @@
       <div class="step-num">04</div>
       <div class="step-text">
         <h3>Delivery</h3>
-        <p>Rider delivery within Islamabad &amp; Rawalpindi for Rs. 100–200, paid along with the remaining balance.</p>
+        <p>Rider delivery — Rs. 150 in Islamabad, Rs. 100 in Rawalpindi — paid along with the remaining balance.</p>
       </div>
     </div>
   </div>
@@ -122,7 +122,7 @@
       <h3>Before you send this</h3>
       <ul>
         <li>A 25% advance payment is required to confirm every order.</li>
-        <li>Delivery within Islamabad &amp; Rawalpindi costs Rs. 100–200, paid on delivery with the remaining balance.</li>
+        <li>Delivery is Rs. 150 in Islamabad and Rs. 100 in Rawalpindi — added automatically to your total below, paid on delivery with the remaining balance.</li>
         <li>Custom designs are welcome — just describe what you have in mind below.</li>
         <li>Zahra will confirm your order and share payment details directly after you submit this form.</li>
       </ul>
@@ -165,7 +165,10 @@
       <div class="field">
         <label>Selected Items</label>
         <div class="selected-items-box" id="selectedItemsBox"></div>
+        <div class="order-totals" id="orderTotals"></div>
         <input type="hidden" id="selectedItemsHidden" name="selectedItems">
+        <input type="hidden" id="deliveryChargeHidden" name="deliveryCharge">
+        <input type="hidden" id="grandTotalHidden" name="grandTotal">
       </div>
       <div class="field">
         <label for="details">Design Details (text, colours, size, etc.)</label>
@@ -191,7 +194,7 @@
     <div class="footer-col">
       <h4>Service Area</h4>
       <p>Islamabad &amp; Rawalpindi</p>
-      <p>Delivery: Rs. 100–200</p>
+      <p>Delivery: Rs. 100 (Rawalpindi) / Rs. 150 (Islamabad)</p>
     </div>
   </div>
   <div class="footer-bottom">&copy; 2026 Arts by Zahra. All designs made to order.</div>
@@ -201,6 +204,7 @@
 <div class="cart-drawer" id="cartDrawer">
   <h3>Your Cart <button class="cart-close" id="cartClose" aria-label="Close">&times;</button></h3>
   <div id="cartItemsList"></div>
+  <div class="cart-footer-total" id="cartDrawerTotal"></div>
   <button class="cart-proceed-btn" id="cartProceedBtn">Proceed to Order Form</button>
 </div>
 
