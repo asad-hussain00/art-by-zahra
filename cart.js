@@ -6,6 +6,15 @@ function getDeliveryCharge(city){
   return Object.prototype.hasOwnProperty.call(DELIVERY_RATES, city) ? DELIVERY_RATES[city] : null;
 }
 
+// Size options per product category. Each cart item shows its own size dropdown.
+const CANVAS_SIZES = ['8x10 inch', '12x16 inch', '16x20 inch', '20x24 inch'];
+const SHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+function sizeOptionsFor(category){
+  if(category === 'tshirt') return SHIRT_SIZES;
+  if(category === 'canvas') return CANVAS_SIZES;
+  return [];
+}
+
 function getCart(){
   try { return JSON.parse(localStorage.getItem('azCart') || '[]'); } catch(e){ return []; }
 }
@@ -19,10 +28,17 @@ function addToCart(item){
   if(existing){
     existing.qty = (existing.qty || 1) + 1;
   } else {
-    cart.push({ ...item, qty: 1 });
+    const sizes = sizeOptionsFor(item.category);
+    cart.push({ ...item, qty: 1, size: sizes[0] || '' });
   }
   setCart(cart);
   return true;
+}
+function updateItemSize(code, size){
+  const cart = getCart();
+  const item = cart.find(i=>i.code === code);
+  if(item) item.size = size;
+  setCart(cart);
 }
 function updateCartQty(code, newQty){
   let cart = getCart();
@@ -135,7 +151,16 @@ function fillOrderFormFromCart(){
     updateOrderTotals();
     return;
   }
-  box.innerHTML = cart.map(item=>`
+  box.innerHTML = cart.map(item=>{
+    const sizes = sizeOptionsFor(item.category);
+    const sizeHtml = sizes.length ? `
+        <div class="size-select-wrap">
+          <label class="size-label">Size</label>
+          <select class="size-select" data-code="${item.code}">
+            ${sizes.map(s=>`<option value="${s}" ${item.size===s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>` : '';
+    return `
     <div class="order-summary-item" data-code="${item.code}">
       ${item.imageUrl ? `<img src="${item.imageUrl}" alt="">` : ''}
       <div class="osi-info">
@@ -146,12 +171,14 @@ function fillOrderFormFromCart(){
           <span class="qty-value">${item.qty || 1}</span>
           <button type="button" class="qty-btn" data-action="inc" data-code="${item.code}" aria-label="Increase quantity">+</button>
         </div>
+        ${sizeHtml}
       </div>
       <div class="osi-right">
         ${item.price ? `<span class="osi-subtotal">Rs. ${itemLineTotal(item)}</span>` : ''}
         <button type="button" class="cart-remove" data-code="${item.code}" aria-label="Remove">&times;</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   box.querySelectorAll('.qty-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -163,6 +190,12 @@ function fillOrderFormFromCart(){
       fillOrderFormFromCart();
     });
   });
+  box.querySelectorAll('.size-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      updateItemSize(sel.dataset.code, sel.value);
+      fillOrderFormFromCart();
+    });
+  });
   box.querySelectorAll('.cart-remove').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       removeFromCart(btn.dataset.code);
@@ -171,7 +204,7 @@ function fillOrderFormFromCart(){
   });
 
   if(hidden){
-    hidden.value = cart.map(i=>`${i.title} x${i.qty||1} [${i.code}]${i.price ? ' - Rs.'+itemLineTotal(i) : ''}`).join('; ');
+    hidden.value = cart.map(i=>`${i.title} x${i.qty||1} [${i.code}]${i.size ? ' - Size: '+i.size : ''}${i.price ? ' - Rs.'+itemLineTotal(i) : ''}`).join('; ');
   }
   updateOrderTotals();
 }
@@ -236,7 +269,7 @@ function cardTemplate(item){
         ${priceHtml}
         <p>${item.description || ''}</p>
         <span class="code-tag">Code: ${item.code || '—'}</span>
-        <button class="add-cart-btn" data-code="${item.code || ''}" data-title="${safeTitle}" data-price="${item.price || ''}" data-image="${item.imageUrl || ''}">Add to Cart</button>
+        <button class="add-cart-btn" data-code="${item.code || ''}" data-title="${safeTitle}" data-price="${item.price || ''}" data-image="${item.imageUrl || ''}" data-category="${item.category || ''}">Add to Cart</button>
       </div>
     </div>`;
 }
@@ -249,7 +282,7 @@ function bindCardEvents(container){
   container.querySelectorAll('.add-cart-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(!btn.dataset.code){ return; }
-      addToCart({code: btn.dataset.code, title: btn.dataset.title, price: btn.dataset.price, imageUrl: btn.dataset.image});
+      addToCart({code: btn.dataset.code, title: btn.dataset.title, price: btn.dataset.price, imageUrl: btn.dataset.image, category: btn.dataset.category});
       btn.textContent = 'Added ✓';
       setTimeout(()=>{ btn.textContent = 'Add to Cart'; }, 1200);
     });

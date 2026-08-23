@@ -236,6 +236,15 @@ form{display:flex; flex-direction:column; gap:16px;}
 }
 .empty-cart-note{font-size:0.85rem; color:#6a6156;}
 
+/* SIZE SELECT (per cart item, canvas or t-shirt) */
+.size-select-wrap{display:flex; align-items:center; gap:8px; margin-top:8px;}
+.size-label{font-size:0.7rem; text-transform:uppercase; letter-spacing:0.03em; color:#5a5148;}
+.size-select{
+  padding:5px 8px; border:1px solid rgba(26,22,19,0.3); background:var(--parchment);
+  font-family:'Jost',sans-serif; font-size:0.82rem; color:var(--ink); border-radius:2px;
+}
+.size-select:focus{outline:none; border-color:var(--emerald);}
+
 /* QTY STEPPER (shared by cart drawer + order summary) */
 .qty-stepper{display:flex; align-items:center; gap:8px; margin-top:6px;}
 .qty-btn{
