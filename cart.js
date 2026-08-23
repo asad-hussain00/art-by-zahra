@@ -1,7 +1,7 @@
 // ===== Shared Cart + Lightbox + Card rendering for arts by zahra =====
 
 // Fixed delivery rates by city. "Other" = null (confirmed manually by Zahra).
-const DELIVERY_RATES = { 'Islamabad': 150, 'Rawalpindi': 100 };
+const DELIVERY_RATES = { 'Islamabad': 100, 'Rawalpindi': 150 };
 function getDeliveryCharge(city){
   return Object.prototype.hasOwnProperty.call(DELIVERY_RATES, city) ? DELIVERY_RATES[city] : null;
 }
